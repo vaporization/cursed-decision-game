@@ -229,6 +229,9 @@ body{
   justify-content:center;
   padding:16px;
 }
+
+.overlay.hidden { display: none; }
+
 .overlay-card{
   width:min(640px, 95vw);
   border:1px solid rgba(127,255,212,.35);
