@@ -1,26 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Cursed Decision Game</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div id="crt" class="crt">
+    <header class="topbar">
+      <div class="title">🧩 CURSED DECISION GAME</div>
+      <div class="subtitle">Text-Based Chaos • Terminal Edition</div>
+      <div class="controls">
+        <button id="btnMute" class="mini">🔊 Sound: ON</button>
+        <button id="btnReset" class="mini danger">Reset Reality</button>
+      </div>
+    </header>
 
-  <div class="game-container">
-    <h1>🧩 Cursed Decision Game</h1>
+    <main class="layout">
+      <section class="panel left">
+        <div class="hud">
+          <div class="stat"><span>Karma</span><b id="karma">0</b></div>
+          <div class="stat"><span>FBI</span><b id="fbi">0</b></div>
+          <div class="stat"><span>Clout</span><b id="clout">0</b></div>
+          <div class="stat"><span>Chaos</span><b id="chaos">1</b></div>
+          <div class="stat"><span>Sanity</span><b id="sanity">100</b></div>
+        </div>
 
-    <div class="stats">
-      <p>Karma: <span id="karma">0</span></p>
-      <p>FBI Suspicion: <span id="fbi">0</span></p>
-      <p>Internet Clout: <span id="clout">0</span></p>
-      <p>Chaos Level: <span id="chaos">1</span></p>
+        <div class="log">
+          <div class="log-title">SYSTEM LOG</div>
+          <div id="log" class="log-body"></div>
+        </div>
+
+        <div class="achievements">
+          <div class="log-title">ACHIEVEMENTS</div>
+          <div id="achievements" class="chips"></div>
+        </div>
+
+        <div class="endings">
+          <div class="log-title">ENDING ARCHIVE</div>
+          <div id="endings" class="endings-body"></div>
+        </div>
+      </section>
+
+      <section class="panel center">
+        <div class="terminal">
+          <div class="prompt">> SCENARIO</div>
+          <div id="scenario" class="scenario"></div>
+
+          <div class="prompt">> CHOICES</div>
+          <div id="choices" class="choices"></div>
+
+          <div id="eventBanner" class="banner hidden"></div>
+
+          <div class="footerline">
+            <span id="turnReadout">Turn 0</span>
+            <span id="modReadout">Mods: none</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel right">
+        <div class="chat">
+          <div class="log-title">LIVE CHAT (totally real)</div>
+          <div id="chat" class="chat-body"></div>
+          <div class="chat-input">
+            <span class="dim">You can’t type. The internet speaks for you.</span>
+          </div>
+        </div>
+
+        <div class="help">
+          <div class="log-title">HOW TO WIN</div>
+          <div class="help-body">
+            <p>There is no win.</p>
+            <p>Only outcomes.</p>
+            <p class="dim">Pro tip: don’t “Plug it in.”</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <h2 id="overlayTitle">ENDING</h2>
+        <p id="overlayText"></p>
+        <div class="overlay-buttons">
+          <button id="btnContinue" class="mini">Continue (New Timeline)</button>
+          <button id="btnHardReset" class="mini danger">Hard Reset</button>
+        </div>
+      </div>
     </div>
-
-    <div id="scenario" class="scenario"></div>
-    <div id="choices" class="choices"></div>
-
-    <button id="restart" onclick="restartGame()" style="display:none;">Restart Reality</button>
   </div>
 
   <script src="game.js"></script>
