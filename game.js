@@ -3,6 +3,7 @@
    - Fake live chat reactions
    - Achievements, endings, autosave (localStorage)
    - Glitch + sound (WebAudio)
+   - Keyboard controls: 1–4, Arrow keys, Enter, Esc
 */
 
 const $ = (id) => document.getElementById(id);
@@ -28,6 +29,9 @@ const defaultState = () => ({
 
 let state = loadState() ?? defaultState();
 let lastScenario = null;
+
+// Keyboard/UI selection state (not persisted)
+let selectedChoiceIndex = 0;
 
 // -------------------------
 // WebAudio SFX (no assets)
@@ -173,35 +177,14 @@ function checkAchievements() {
 // Modifiers (global effects lasting a few turns)
 // -------------------------
 const MOD_POOL = [
-  {
-    name: "Algorithm Bias",
-    duration: 4,
-    applyToChoice: (delta) => ({ ...delta, clout: delta.clout + 2 })
-  },
-  {
-    name: "Paranoia Patch",
-    duration: 3,
-    applyToChoice: (delta) => ({ ...delta, fbi: Math.max(0, delta.fbi - 2) })
-  },
-  {
-    name: "Moral Tax",
-    duration: 5,
-    applyToChoice: (delta) => ({ ...delta, karma: delta.karma - 1 })
-  },
-  {
-    name: "Brain Fog",
-    duration: 4,
-    applyToChoice: (delta) => ({ ...delta, sanity: delta.sanity - 2 })
-  },
-  {
-    name: "Viral Tailwind",
-    duration: 3,
-    applyToChoice: (delta) => ({ ...delta, clout: delta.clout + 6, karma: delta.karma - 1 })
-  }
+  { name: "Algorithm Bias", duration: 4, applyToChoice: (delta) => ({ ...delta, clout: delta.clout + 2 }) },
+  { name: "Paranoia Patch", duration: 3, applyToChoice: (delta) => ({ ...delta, fbi: Math.max(0, delta.fbi - 2) }) },
+  { name: "Moral Tax", duration: 5, applyToChoice: (delta) => ({ ...delta, karma: delta.karma - 1 }) },
+  { name: "Brain Fog", duration: 4, applyToChoice: (delta) => ({ ...delta, sanity: delta.sanity - 2 }) },
+  { name: "Viral Tailwind", duration: 3, applyToChoice: (delta) => ({ ...delta, clout: delta.clout + 6, karma: delta.karma - 1 }) }
 ];
 
 function maybeAddModifier() {
-  // grows with chaos
   const p = Math.min(0.08 + (state.chaos * 0.02), 0.45);
   if (Math.random() < p) {
     const mod = pick(MOD_POOL);
@@ -244,7 +227,6 @@ const SEEDS = {
 };
 
 function makeScenario() {
-  // Escalate more as chaos grows
   const obj = pick(SEEDS.objects);
   const place = pick(SEEDS.places);
   const vibe = pick(SEEDS.vibes);
@@ -252,7 +234,6 @@ function makeScenario() {
 
   const baseText = `You found a ${obj} in the ${place}. It is ${vibe}.${extra}`;
 
-  // Generate choices (some “good”, some cursed, some clout-max)
   const choiceTemplates = [
     { label: "Plug it in", d: { karma:-4, fbi:+10, clout:+2, sanity:-6 }, tag: "Classic speedrun." },
     { label: "Throw it away", d: { karma:+4, fbi:-2, clout:-2, sanity:+2 }, tag: "Responsible. Boring." },
@@ -265,10 +246,9 @@ function makeScenario() {
     { label: "Hand it to the nearest guy named Kyle", d: { karma:-1, fbi:+4, clout:+5, sanity:-1 }, tag: "Kyle accepts." },
   ];
 
-  // Pick 4 choices with at least one “responsible-ish” option
   const picks = new Set();
-  picks.add(choiceTemplates[0]); // keep "Plug it in" as the forbidden button vibe
-  picks.add(choiceTemplates[1]); // keep a safe-ish option
+  picks.add(choiceTemplates[0]);
+  picks.add(choiceTemplates[1]);
   while (picks.size < 4) picks.add(pick(choiceTemplates));
 
   const choices = Array.from(picks).map(c => ({
@@ -281,7 +261,6 @@ function makeScenario() {
 }
 
 function scaleDelta(d) {
-  // Scale chaos impact; clamp sanity delta a bit
   const mult = 1 + (state.chaos - 1) * 0.12;
   return {
     karma: Math.round(d.karma * (mult * 0.85)),
@@ -313,7 +292,6 @@ function maybeEvent() {
     banner(ev.text, 2600);
     eventSound();
     logLine(`EVENT: ${ev.text}`, "warn");
-    // chat reacts to events too
     pushChatReactions("event", ev.text);
   }
 }
@@ -322,11 +300,9 @@ function maybeEvent() {
 // Core choice application
 // -------------------------
 function applyDelta(delta, meta = {}) {
-  // Apply modifiers
   let d = { karma:0, fbi:0, clout:0, sanity:0, ...delta };
   for (const m of state.modifiers) d = m.applyToChoice(d);
 
-  // Secret tracking
   if (meta.choiceText && meta.choiceText.toLowerCase().includes("plug")) state._pluggedUSB = true;
 
   state.karma += d.karma;
@@ -334,7 +310,6 @@ function applyDelta(delta, meta = {}) {
   state.clout += d.clout;
   state.sanity = clamp(state.sanity + d.sanity, 0, 100);
 
-  // soft clamps so it doesn't go insane instantly
   state.fbi = clamp(state.fbi, 0, 100);
   state.clout = clamp(state.clout, -50, 200);
   state.karma = clamp(state.karma, -200, 200);
@@ -348,7 +323,6 @@ function applyDelta(delta, meta = {}) {
 // Endings
 // -------------------------
 function checkEnding() {
-  // Multiple endings; whichever triggers first
   if (state.fbi >= 100) return { title:"🚨 PERMANENTLY INTERESTING", text:"You are now a recurring keyword in three separate databases. Congratulations?" };
   if (state.sanity <= 0) return { title:"🧠 BRAIN HAS LEFT THE CHAT", text:"Reality becomes optional. You attempt to reboot your personality driver." };
   if (state.clout >= 160) return { title:"🌐 PURE INTERNET ENERGY", text:"Your body dissolves into engagement metrics. You haunt comment sections forever." };
@@ -367,11 +341,8 @@ function showEnding(ending) {
   $("overlayText").textContent = ending.text;
   $("overlay").classList.remove("hidden");
 
-  // Make chat go wild
   pushChatReactions("ending", ending.title);
   logLine(`ENDING reached: ${ending.title}`, "warn");
-
-  // unlock timeline hacker if multiple endings
   checkAchievements();
 }
 
@@ -422,10 +393,33 @@ function renderScenario(s) {
   s.choices.forEach((c, idx) => {
     const btn = document.createElement("button");
     btn.className = "choice";
+    btn.setAttribute("data-choice-index", String(idx));
     btn.innerHTML = `${idx+1}. ${escapeHtml(c.text)}<small>${escapeHtml(c.hint)}</small>`;
     btn.onclick = () => choose(c);
     box.appendChild(btn);
   });
+
+  // Reset selection to first choice each scenario render
+  selectedChoiceIndex = 0;
+  syncChoiceSelectionUI();
+}
+
+function syncChoiceSelectionUI() {
+  const buttons = Array.from(document.querySelectorAll(".choice"));
+  if (!buttons.length) return;
+
+  // clamp selection in range
+  selectedChoiceIndex = clamp(selectedChoiceIndex, 0, buttons.length - 1);
+
+  buttons.forEach((b, i) => {
+    b.classList.toggle("selected", i === selectedChoiceIndex);
+  });
+
+  // ensure selected stays visible inside scroll containers (if any)
+  const selected = buttons[selectedChoiceIndex];
+  if (selected && typeof selected.scrollIntoView === "function") {
+    selected.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function choose(choice) {
@@ -433,22 +427,17 @@ function choose(choice) {
 
   applyDelta(choice.delta, { choiceText: choice.text });
 
-  // turn progression
   state.turn += 1;
   state.chaos += 1;
 
-  // sanity bleed as chaos increases
   if (state.chaos > 5) state.sanity = clamp(state.sanity - Math.floor((state.chaos - 4) * 0.6), 0, 100);
 
-  // modifiers + events
   tickModifiers();
   maybeAddModifier();
   maybeEvent();
 
-  // fake chat reacts
   pushChatReactions("choice", choice.text);
 
-  // achievements + save + render
   checkAchievements();
   saveState();
   updateHud();
@@ -463,15 +452,83 @@ function choose(choice) {
 }
 
 function nextTurn() {
-  // generate next scenario
   lastScenario = makeScenario();
   renderScenario(lastScenario);
   updateHud();
   saveState();
 
-  // drip feed chat even if player stalls
   if (Math.random() < 0.35) chatLine(pick(CHAT_IDLE));
 }
+
+// -------------------------
+// Keyboard controls
+// -------------------------
+function isOverlayOpen() {
+  const ov = $("overlay");
+  return ov && !ov.classList.contains("hidden");
+}
+
+function chooseByIndex(idx) {
+  if (!lastScenario || !lastScenario.choices) return;
+  const choices = lastScenario.choices;
+  if (idx < 0 || idx >= choices.length) return;
+  selectedChoiceIndex = idx;
+  syncChoiceSelectionUI();
+  choose(choices[idx]);
+}
+
+document.addEventListener("keydown", (e) => {
+  // If overlay is open, only allow ESC to close it (no gameplay)
+  if (isOverlayOpen()) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      hideEnding();
+      // keep current timeline; user can keep playing after closing
+      updateHud();
+    }
+    return;
+  }
+
+  // Ignore if user is typing in a form element (future-proof)
+  const tag = (document.activeElement?.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+  const buttons = Array.from(document.querySelectorAll(".choice"));
+  if (!buttons.length) return;
+
+  // 1-4 hotkeys (also numpad)
+  if (e.key >= "1" && e.key <= "4") {
+    const idx = Number(e.key) - 1;
+    if (idx < buttons.length) {
+      e.preventDefault();
+      chooseByIndex(idx);
+    }
+    return;
+  }
+
+  // Arrow navigation
+  if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    selectedChoiceIndex = (selectedChoiceIndex - 1 + buttons.length) % buttons.length;
+    syncChoiceSelectionUI();
+    return;
+  }
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+    e.preventDefault();
+    selectedChoiceIndex = (selectedChoiceIndex + 1) % buttons.length;
+    syncChoiceSelectionUI();
+    return;
+  }
+
+  // Enter chooses selected
+  if (e.key === "Enter") {
+    e.preventDefault();
+    chooseByIndex(selectedChoiceIndex);
+    return;
+  }
+
+  // Escape does nothing in normal play (reserved)
+});
 
 // -------------------------
 // Fake chat engine
@@ -603,7 +660,6 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    // minimal validation
     if (typeof parsed !== "object" || parsed === null) return null;
     return { ...defaultState(), ...parsed };
   } catch {

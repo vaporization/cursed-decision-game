@@ -227,6 +227,13 @@ body{
   background: linear-gradient(180deg, rgba(127,255,212,0.10), rgba(0,0,0,0.20));
   box-shadow: 0 12px 40px rgba(0,0,0,.30);
 }
+
+.choice.selected{
+  border-color: rgba(109,179,255,.75);
+  background: linear-gradient(180deg, rgba(109,179,255,0.12), rgba(0,0,0,0.22));
+  box-shadow: 0 14px 44px rgba(0,0,0,.35);
+}
+
 .choice:active{transform: translateY(1px)}
 .choice small{
   display:block;
